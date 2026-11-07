@@ -143,9 +143,9 @@ namespace IdCardManager.UI.Forms
             var bar = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 52,
+                Height = 64,
                 BackColor = Color.FromArgb(250, 250, 250),
-                Padding = new Padding(12, 6, 12, 6),
+                Padding = new Padding(12, 8, 12, 8),
                 ColumnCount = 2,
                 RowCount = 1
             };
@@ -227,7 +227,7 @@ namespace IdCardManager.UI.Forms
             _host.ResumeLayout();
             _pageTitle.Text = isHome ? string.Empty : title;
             _toolbar.Visible = !isHome;
-            _toolbar.Height = isHome ? 0 : 52;
+            _toolbar.Height = isHome ? 0 : 64;
             _back.Visible = !isHome;
             // 任务栏/标题栏区分当前业务，避免充钱/扣钱切错窗
             Text = isHome

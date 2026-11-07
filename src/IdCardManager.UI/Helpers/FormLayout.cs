@@ -7,9 +7,9 @@ namespace IdCardManager.UI.Helpers
 {
     internal static class FormLayout
     {
-        public const int LabelColWidth = 132;
-        public const int RowHeight = 48;
-        public const int BoxHeight = 34;
+        public const int LabelColWidth = 140;
+        public const int RowHeight = 64;
+        public const int BoxHeight = 56;
 
         /// <summary>
         /// 充/扣页：banner + 单列表单，行高 AutoSize，避免 DPI 下裁切。
@@ -25,7 +25,7 @@ namespace IdCardManager.UI.Helpers
                 Margin = new Padding(0),
                 Padding = new Padding(0)
             };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 
             var banner = new Panel
@@ -33,14 +33,14 @@ namespace IdCardManager.UI.Helpers
                 Dock = DockStyle.Fill,
                 BackColor = accent,
                 Margin = new Padding(0),
-                Padding = new Padding(14, 0, 16, 0)
+                Padding = new Padding(16, 0, 16, 0)
             };
             banner.Controls.Add(new Label
             {
                 Text = mark + "  " + title,
                 Dock = DockStyle.Fill,
                 ForeColor = Color.White,
-                Font = new Font("Microsoft YaHei UI", 12f, FontStyle.Bold, GraphicsUnit.Point),
+                Font = new Font("Microsoft YaHei UI", 15f, FontStyle.Bold, GraphicsUnit.Point),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.Transparent
             });
@@ -51,7 +51,7 @@ namespace IdCardManager.UI.Helpers
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = Color.White,
-                Padding = new Padding(24, 16, 24, 16),
+                Padding = new Padding(28, 20, 28, 20),
                 Margin = new Padding(0)
             };
 
@@ -121,7 +121,7 @@ namespace IdCardManager.UI.Helpers
             return banner;
         }
 
-        public static UITextBox AddAmountField(TableLayoutPanel form, string watermark, int boxWidth = 280)
+        public static UITextBox AddAmountField(TableLayoutPanel form, string watermark, int boxWidth = 360)
         {
             var row = NextAutoRow(form);
             var line = MakeFieldLine();
@@ -130,9 +130,10 @@ namespace IdCardManager.UI.Helpers
             var box = new UITextBox
             {
                 Text = string.Empty,
-                Font = new Font("Microsoft YaHei UI", 12f, FontStyle.Regular, GraphicsUnit.Point),
+                Font = new Font("Microsoft YaHei UI", 16f, FontStyle.Bold, GraphicsUnit.Point),
                 Size = new Size(boxWidth, BoxHeight),
-                Margin = new Padding(0, 4, 8, 4),
+                MinimumSize = new Size(boxWidth, BoxHeight),
+                Margin = new Padding(0, 8, 10, 8),
                 Anchor = AnchorStyles.Left,
                 FillColor = Color.White,
                 ForeColor = Color.Black,
@@ -181,10 +182,10 @@ namespace IdCardManager.UI.Helpers
             var val = new Label
             {
                 Text = value,
-                Font = new Font("Microsoft YaHei UI", 13f, FontStyle.Bold, GraphicsUnit.Point),
+                Font = new Font("Microsoft YaHei UI", 18f, FontStyle.Bold, GraphicsUnit.Point),
                 ForeColor = Color.FromArgb(0, 100, 180),
                 AutoSize = true,
-                Margin = new Padding(0, 8, 0, 8),
+                Margin = new Padding(0, 10, 0, 10),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.Transparent
             };
@@ -198,10 +199,10 @@ namespace IdCardManager.UI.Helpers
             var row = NextAutoRow(form);
             var hint = new Label
             {
-                Font = new Font("Microsoft YaHei UI", 10f, FontStyle.Regular, GraphicsUnit.Point),
+                Font = new Font("Microsoft YaHei UI", 13f, FontStyle.Regular, GraphicsUnit.Point),
                 ForeColor = Color.FromArgb(200, 80, 0),
                 AutoSize = true,
-                Margin = new Padding(0, 4, 0, 4),
+                Margin = new Padding(0, 6, 0, 6),
                 BackColor = Color.Transparent
             };
             form.Controls.Add(hint, 0, row);
@@ -230,10 +231,9 @@ namespace IdCardManager.UI.Helpers
                 var chip = new UIButton
                 {
                     Text = text,
-                    // 按字数给足宽度，避免「5000」被裁成「450」
-                    Size = new Size(Math.Max(72, 24 + text.Length * 14), 30),
-                    Font = new Font("Microsoft YaHei UI", 10f, FontStyle.Regular, GraphicsUnit.Point),
-                    Margin = new Padding(0, 0, 8, 8),
+                    Size = new Size(Math.Max(96, 32 + text.Length * 16), 48),
+                    Font = new Font("Microsoft YaHei UI", 13f, FontStyle.Bold, GraphicsUnit.Point),
+                    Margin = new Padding(0, 0, 10, 10),
                     FillColor = Color.FromArgb(245, 247, 250),
                     FillHoverColor = Color.FromArgb(220, 230, 245),
                     ForeColor = Color.FromArgb(40, 40, 40),
@@ -263,14 +263,15 @@ namespace IdCardManager.UI.Helpers
             return buttons;
         }
 
-        public static UIButton BigButton(string text, int width = 160)
+        public static UIButton BigButton(string text, int width = 200)
         {
             return new UIButton
             {
                 Text = text,
-                Size = new Size(width, 36),
-                Font = new Font("Microsoft YaHei UI", 11f, FontStyle.Bold, GraphicsUnit.Point),
-                Margin = new Padding(0, 0, 10, 0)
+                Size = new Size(width, 56),
+                MinimumSize = new Size(width, 56),
+                Font = new Font("Microsoft YaHei UI", 15f, FontStyle.Bold, GraphicsUnit.Point),
+                Margin = new Padding(0, 0, 14, 0)
             };
         }
 
@@ -279,9 +280,10 @@ namespace IdCardManager.UI.Helpers
             return new UIButton
             {
                 Text = "← 返回",
-                Size = new Size(96, 32),
-                Font = new Font("Microsoft YaHei UI", 11f, FontStyle.Bold, GraphicsUnit.Point),
-                Margin = new Padding(0, 0, 10, 0)
+                Size = new Size(128, 48),
+                MinimumSize = new Size(128, 48),
+                Font = new Font("Microsoft YaHei UI", 14f, FontStyle.Bold, GraphicsUnit.Point),
+                Margin = new Padding(0, 0, 12, 0)
             };
         }
 
@@ -331,12 +333,11 @@ namespace IdCardManager.UI.Helpers
             return new Label
             {
                 Text = text,
-                Font = new Font("Microsoft YaHei UI", 11f, FontStyle.Regular, GraphicsUnit.Point),
+                Font = new Font("Microsoft YaHei UI", 15f, FontStyle.Regular, GraphicsUnit.Point),
                 AutoSize = true,
-                // 禁止换行：单行完整显示「当前余额」
                 MaximumSize = new Size(0, 0),
                 AutoEllipsis = false,
-                Margin = new Padding(0, 10, 12, 10),
+                Margin = new Padding(0, 12, 14, 12),
                 Padding = new Padding(0),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.Transparent,

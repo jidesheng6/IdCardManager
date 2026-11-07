@@ -4,7 +4,7 @@ using Sunny.UI;
 
 namespace IdCardManager.UI.Dialogs
 {
-    /// <summary>小巧密码框：固定像素尺寸 + Pixel 字体，避免 150% DPI 叠乘撑爆。</summary>
+    /// <summary>密码框：加高输入框与按钮，大字易读。</summary>
     internal sealed class PinInputDialog : Form
     {
         private readonly UITextBox _pin;
@@ -21,36 +21,36 @@ namespace IdCardManager.UI.Dialogs
             MinimizeBox = false;
             ShowInTaskbar = false;
             AutoScaleMode = AutoScaleMode.None;
-            ClientSize = new Size(360, 168);
+            ClientSize = new Size(480, 280);
             BackColor = Color.White;
-            Font = new Font("Microsoft YaHei UI", 12f, FontStyle.Regular, GraphicsUnit.Pixel);
+            Font = new Font("Microsoft YaHei UI", 14f, FontStyle.Regular, GraphicsUnit.Pixel);
 
-            var msg = new Label
+            Controls.Add(new Label
             {
                 Text = message,
-                Location = new Point(16, 12),
-                Size = new Size(328, 22),
-                Font = new Font("Microsoft YaHei UI", 13f, FontStyle.Regular, GraphicsUnit.Pixel),
+                Location = new Point(24, 18),
+                Size = new Size(432, 32),
+                Font = new Font("Microsoft YaHei UI", 18f, FontStyle.Regular, GraphicsUnit.Pixel),
+                TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.Transparent
-            };
-            Controls.Add(msg);
+            });
 
             _pin = new UITextBox
             {
-                Location = new Point(16, 40),
-                Size = new Size(328, 32),
-                Font = new Font("Microsoft YaHei UI", 14f, FontStyle.Regular, GraphicsUnit.Pixel),
+                Location = new Point(24, 60),
+                Size = new Size(432, 56),
+                Font = new Font("Microsoft YaHei UI", 20f, FontStyle.Bold, GraphicsUnit.Pixel),
                 PasswordChar = '*',
-                Watermark = "密码"
+                Watermark = "请输入密码"
             };
             Controls.Add(_pin);
 
             _hint = new Label
             {
-                Location = new Point(16, 78),
-                Size = new Size(328, 18),
+                Location = new Point(24, 128),
+                Size = new Size(432, 28),
                 ForeColor = Color.FromArgb(200, 80, 0),
-                Font = new Font("Microsoft YaHei UI", 12f, FontStyle.Regular, GraphicsUnit.Pixel),
+                Font = new Font("Microsoft YaHei UI", 14f, FontStyle.Regular, GraphicsUnit.Pixel),
                 BackColor = Color.Transparent
             };
             Controls.Add(_hint);
@@ -58,9 +58,9 @@ namespace IdCardManager.UI.Dialogs
             var ok = new UIButton
             {
                 Text = "确定",
-                Location = new Point(96, 108),
-                Size = new Size(88, 32),
-                Font = new Font("Microsoft YaHei UI", 13f, FontStyle.Bold, GraphicsUnit.Pixel)
+                Location = new Point(100, 180),
+                Size = new Size(130, 56),
+                Font = new Font("Microsoft YaHei UI", 18f, FontStyle.Bold, GraphicsUnit.Pixel)
             };
             ok.Click += (_, __) =>
             {
@@ -78,9 +78,9 @@ namespace IdCardManager.UI.Dialogs
             var cancel = new UIButton
             {
                 Text = "取消",
-                Location = new Point(196, 108),
-                Size = new Size(88, 32),
-                Font = new Font("Microsoft YaHei UI", 13f, FontStyle.Regular, GraphicsUnit.Pixel)
+                Location = new Point(250, 180),
+                Size = new Size(130, 56),
+                Font = new Font("Microsoft YaHei UI", 18f, FontStyle.Regular, GraphicsUnit.Pixel)
             };
             cancel.Click += (_, __) =>
             {

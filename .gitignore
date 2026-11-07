@@ -32,3 +32,8 @@ Desktop.ini
 ## Agent / local tooling
 .cursor/
 agent-transcripts/
+
+# Local analysis / probe (not for release)
+LrOil-analysis/
+rs485-probe/
+

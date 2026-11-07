@@ -7,6 +7,7 @@ using IdCardManager.Domain.Enums;
 using IdCardManager.Domain.Helpers;
 using IdCardManager.Domain.Rules;
 using IdCardManager.UI.Composition;
+using IdCardManager.UI.Dialogs;
 using IdCardManager.UI.Helpers;
 using Sunny.UI;
 
@@ -160,9 +161,12 @@ namespace IdCardManager.UI.Pages
 
             using (NavigationLock.Scope())
             {
-                var ask = "确认给用户卡充钱 " + yuan.ToString("0.00") + " 元？";
-                if (MessageBox.Show(FindForm(), ask, "确认充钱", MessageBoxButtons.YesNo, MessageBoxIcon.Question) !=
-                    DialogResult.Yes)
+                if (!AmountConfirmDialog.Confirm(
+                        FindForm(),
+                        "确认充钱",
+                        "即将充入金额",
+                        yuan,
+                        Color.FromArgb(0, 150, 136)))
                 {
                     return;
                 }

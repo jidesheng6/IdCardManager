@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using IdCardManager.Domain.Entities;
+using IdCardManager.Domain.Helpers;
 using IdCardManager.UI.Composition;
 using IdCardManager.UI.Helpers;
 using Sunny.UI;
@@ -9,7 +10,7 @@ using Sunny.UI;
 namespace IdCardManager.UI.Pages
 {
     /// <summary>
-    /// 首页：3×2 百分比网格铺满；设备三齐才可点；未解锁时点击先弹密码。
+    /// 首页：3×2 网格；第 6 格为余额/油品信息卡（只读）。
     /// </summary>
     public sealed class HomePage : UIPanel
     {
@@ -26,6 +27,7 @@ namespace IdCardManager.UI.Pages
         private readonly Label _sessionHint;
         private readonly UIButton _unlockBtn;
         private readonly FeatureCard[] _cards;
+        private readonly InfoCard _infoCard;
         private bool _deviceReady;
 
         public event Action<HomeAction> Navigate;
@@ -106,7 +108,6 @@ namespace IdCardManager.UI.Pages
             };
             header.Controls.Add(_unlockBtn, 1, 0);
 
-            // 正规 3 列 × 2 行；下排第 3 格留空
             var grid = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -132,6 +133,13 @@ namespace IdCardManager.UI.Pages
                 Place(grid, 0, 1, HomeAction.Trades, "卡流水", "本地记录", Color.FromArgb(120, 90, 180), true),
                 Place(grid, 1, 1, HomeAction.ResetPin, "重置密码", "需授权卡", Color.FromArgb(90, 90, 96), false)
             };
+
+            _infoCard = new InfoCard
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(6)
+            };
+            grid.Controls.Add(_infoCard, 2, 1);
 
             root.Controls.Add(header, 0, 0);
             root.Controls.Add(grid, 0, 1);
@@ -169,7 +177,6 @@ namespace IdCardManager.UI.Pages
 
         private async System.Threading.Tasks.Task OnCardClickAsync(FeatureCard card, HomeAction action, bool requiresUnlock)
         {
-            // 设备不齐或业务进行中：禁止任何输入
             if (!_deviceReady || !card.IsInteractive || NavigationLock.IsLocked)
             {
                 return;
@@ -222,9 +229,7 @@ namespace IdCardManager.UI.Pages
             }
             else
             {
-                _sessionHint.Text = string.IsNullOrEmpty(_app.Session.OilLimitText)
-                    ? "已就绪"
-                    : "已就绪 · " + _app.Session.OilLimitText;
+                _sessionHint.Text = "已就绪";
                 _sessionHint.ForeColor = Color.FromArgb(0, 128, 0);
             }
 
@@ -233,17 +238,103 @@ namespace IdCardManager.UI.Pages
 
             foreach (var card in _cards)
             {
-                // 设备齐就可点；未解锁时点卡片会弹密码（不灰掉）
                 card.SetInteractive(_deviceReady, _deviceReady && !unlocked && card.RequiresUnlock);
+            }
+
+            // 信息卡：优先会话余额，其次状态推送
+            uint? bal = _app.Session.BalanceFen;
+            var oil = _app.Session.OilLimitText;
+            if (status != null)
+            {
+                if (status.BalanceFen.HasValue) bal = status.BalanceFen;
+                if (!string.IsNullOrWhiteSpace(status.OilLimitText)) oil = status.OilLimitText;
+                if (!status.UserCardPresent)
+                {
+                    bal = null;
+                    oil = null;
+                }
+            }
+
+            _infoCard.UpdateInfo(bal, oil);
+        }
+
+        private sealed class InfoCard : Panel
+        {
+            private readonly Label _bal;
+            private readonly Label _oil;
+
+            public InfoCard()
+            {
+                DoubleBuffered = true;
+                BackColor = Color.FromArgb(20, 55, 95);
+                Padding = new Padding(18);
+
+                var layout = new TableLayoutPanel
+                {
+                    Dock = DockStyle.Fill,
+                    ColumnCount = 1,
+                    RowCount = 2,
+                    BackColor = Color.Transparent,
+                    Padding = new Padding(8)
+                };
+                layout.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+                layout.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+
+                _bal = new Label
+                {
+                    Text = "余额：-",
+                    Font = new Font("Microsoft YaHei UI", 18f, FontStyle.Bold, GraphicsUnit.Point),
+                    ForeColor = Color.FromArgb(255, 220, 80),
+                    Dock = DockStyle.Fill,
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    BackColor = Color.Transparent,
+                    AutoEllipsis = true
+                };
+                _oil = new Label
+                {
+                    Text = "限加油品：-",
+                    Font = new Font("Microsoft YaHei UI", 16f, FontStyle.Bold, GraphicsUnit.Point),
+                    ForeColor = Color.White,
+                    Dock = DockStyle.Fill,
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    BackColor = Color.Transparent,
+                    AutoEllipsis = true
+                };
+                layout.Controls.Add(_bal, 0, 0);
+                layout.Controls.Add(_oil, 0, 1);
+                Controls.Add(layout);
+                Cursor = Cursors.Default;
+            }
+
+            public void UpdateInfo(uint? balanceFen, string oilLimitText)
+            {
+                _bal.Text = !balanceFen.HasValue
+                    ? "余额：-"
+                    : "余额：" + AmountHelper.FenToYuan(balanceFen.Value).ToString("0.00") + "元";
+
+                if (string.IsNullOrWhiteSpace(oilLimitText))
+                {
+                    _oil.Text = "限加油品：-";
+                }
+                else
+                {
+                    _oil.Text = "限加油品：" + oilLimitText.Replace("#", "号");
+                }
             }
         }
 
+        /// <summary>
+        /// 自绘卡片：整卡可点，文字居中且不被 TableLayout 裁切。
+        /// </summary>
         private sealed class FeatureCard : Panel
         {
-            private readonly Label _title;
-            private readonly Label _sub;
-            private readonly Label _lockHint;
+            private readonly string _titleText;
+            private readonly string _subText;
             private readonly Color _accent;
+            private bool _showNeedPin;
+            private Font _titleFont;
+            private Font _subFont;
+            private Font _hintFont;
 
             public bool RequiresUnlock { get; }
             public bool IsInteractive { get; private set; }
@@ -251,85 +342,104 @@ namespace IdCardManager.UI.Pages
             public FeatureCard(string title, string subtitle, Color accent, bool requiresUnlock)
             {
                 RequiresUnlock = requiresUnlock;
+                _titleText = title ?? string.Empty;
+                _subText = subtitle ?? string.Empty;
                 _accent = accent;
-                DoubleBuffered = true;
+                _titleFont = new Font("Microsoft YaHei UI", 26f, FontStyle.Bold, GraphicsUnit.Point);
+                _subFont = new Font("Microsoft YaHei UI", 13f, FontStyle.Regular, GraphicsUnit.Point);
+                _hintFont = new Font("Microsoft YaHei UI", 11f, FontStyle.Regular, GraphicsUnit.Point);
+
+                SetStyle(ControlStyles.AllPaintingInWmPaint |
+                         ControlStyles.UserPaint |
+                         ControlStyles.OptimizedDoubleBuffer |
+                         ControlStyles.ResizeRedraw, true);
+                UpdateStyles();
                 BackColor = accent;
-
-                var layout = new TableLayoutPanel
-                {
-                    Dock = DockStyle.Fill,
-                    ColumnCount = 1,
-                    RowCount = 3,
-                    Padding = new Padding(16, 14, 16, 12),
-                    BackColor = Color.Transparent
-                };
-                layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-                layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-                _title = new Label
-                {
-                    Text = title,
-                    Font = new Font("Microsoft YaHei UI", 20f, FontStyle.Bold, GraphicsUnit.Point),
-                    ForeColor = Color.White,
-                    Dock = DockStyle.Fill,
-                    TextAlign = ContentAlignment.BottomLeft,
-                    BackColor = Color.Transparent
-                };
-                layout.Controls.Add(_title, 0, 0);
-
-                _sub = new Label
-                {
-                    Text = subtitle ?? string.Empty,
-                    Font = new Font("Microsoft YaHei UI", 11f, FontStyle.Regular, GraphicsUnit.Point),
-                    ForeColor = Color.FromArgb(235, 235, 235),
-                    Dock = DockStyle.Fill,
-                    TextAlign = ContentAlignment.TopLeft,
-                    BackColor = Color.Transparent,
-                    AutoSize = true,
-                    Margin = new Padding(0, 6, 0, 0)
-                };
-                layout.Controls.Add(_sub, 0, 1);
-
-                _lockHint = new Label
-                {
-                    Text = "点击后校验密码",
-                    Font = new Font("Microsoft YaHei UI", 9f, FontStyle.Regular, GraphicsUnit.Point),
-                    ForeColor = Color.FromArgb(255, 240, 200),
-                    Dock = DockStyle.Fill,
-                    AutoSize = true,
-                    Visible = false,
-                    BackColor = Color.Transparent,
-                    Margin = new Padding(0, 4, 0, 0)
-                };
-                layout.Controls.Add(_lockHint, 0, 2);
-
-                Controls.Add(layout);
-
-                void Bubble(object s, EventArgs e) => OnClick(EventArgs.Empty);
-                layout.Click += Bubble;
-                foreach (Control c in layout.Controls)
-                {
-                    c.Click += Bubble;
-                }
-
+                Margin = new Padding(6);
                 SetInteractive(false, false);
+            }
+
+            protected override void OnResize(EventArgs e)
+            {
+                base.OnResize(e);
+                FitTitleFont();
+                Invalidate();
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                var g = e.Graphics;
+                g.Clear(BackColor);
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                var pad = 16;
+                var area = Rectangle.Inflate(ClientRectangle, -pad, -pad);
+                var titleSize = TextRenderer.MeasureText(g, _titleText, _titleFont, area.Size, TextFormatFlags.NoPadding);
+                var subSize = TextRenderer.MeasureText(g, _subText, _subFont, area.Size, TextFormatFlags.NoPadding);
+                var hintSize = _showNeedPin
+                    ? TextRenderer.MeasureText(g, "点击后校验密码", _hintFont, area.Size, TextFormatFlags.NoPadding)
+                    : Size.Empty;
+
+                var gap = 8;
+                var blockH = titleSize.Height + gap + subSize.Height
+                             + (_showNeedPin ? gap + hintSize.Height : 0);
+                var top = area.Top + Math.Max(0, (area.Height - blockH) / 2);
+
+                var titleRect = new Rectangle(area.Left, top, area.Width, titleSize.Height);
+                TextRenderer.DrawText(g, _titleText, _titleFont, titleRect, Color.White,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+
+                var subRect = new Rectangle(area.Left, titleRect.Bottom + gap, area.Width, subSize.Height);
+                TextRenderer.DrawText(g, _subText, _subFont, subRect, Color.FromArgb(235, 235, 235),
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+
+                if (_showNeedPin)
+                {
+                    var hintRect = new Rectangle(area.Left, subRect.Bottom + gap, area.Width, hintSize.Height);
+                    TextRenderer.DrawText(g, "点击后校验密码", _hintFont, hintRect, Color.FromArgb(255, 240, 200),
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                }
+            }
+
+            protected override void OnMouseClick(MouseEventArgs e)
+            {
+                base.OnMouseClick(e);
+                if (e.Button == MouseButtons.Left)
+                {
+                    OnClick(EventArgs.Empty);
+                }
+            }
+
+            private void FitTitleFont()
+            {
+                var maxW = Math.Max(40, ClientSize.Width - 32);
+                var maxH = Math.Max(28, ClientSize.Height / 3);
+                for (var size = 26f; size >= 16f; size -= 1f)
+                {
+                    using (var probe = new Font("Microsoft YaHei UI", size, FontStyle.Bold, GraphicsUnit.Point))
+                    {
+                        var sz = TextRenderer.MeasureText(_titleText, probe);
+                        if (sz.Width <= maxW && sz.Height <= maxH)
+                        {
+                            if (Math.Abs(_titleFont.Size - size) > 0.1f)
+                            {
+                                _titleFont.Dispose();
+                                _titleFont = new Font("Microsoft YaHei UI", size, FontStyle.Bold, GraphicsUnit.Point);
+                            }
+
+                            return;
+                        }
+                    }
+                }
             }
 
             public void SetInteractive(bool interactive, bool showNeedPin)
             {
                 IsInteractive = interactive;
+                _showNeedPin = showNeedPin;
                 BackColor = interactive ? _accent : Blend(_accent, Color.FromArgb(190, 190, 190), 0.55f);
-                _lockHint.Visible = showNeedPin;
                 Cursor = interactive ? Cursors.Hand : Cursors.No;
-                foreach (Control c in Controls)
-                {
-                    c.Cursor = Cursor;
-                    foreach (Control cc in c.Controls)
-                    {
-                        cc.Cursor = Cursor;
-                    }
-                }
+                Invalidate();
             }
 
             private static Color Blend(Color a, Color b, float t)
@@ -338,6 +448,18 @@ namespace IdCardManager.UI.Pages
                     (int)(a.R + (b.R - a.R) * t),
                     (int)(a.G + (b.G - a.G) * t),
                     (int)(a.B + (b.B - a.B) * t));
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing)
+                {
+                    _titleFont?.Dispose();
+                    _subFont?.Dispose();
+                    _hintFont?.Dispose();
+                }
+
+                base.Dispose(disposing);
             }
         }
     }
