@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>IdCardManager.Infrastructure</RootNamespace>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
+    <ProjectReference Include="..\IdCardManager.Domain\IdCardManager.Domain.csproj" />
+    <ProjectReference Include="..\IdCardManager.Application\IdCardManager.Application.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="cpukrnlnet">
+      <HintPath>..\..\libs\cpukrnlnet.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Lr.NativeWrapper.LrReader">
+      <HintPath>..\..\libs\Lr.NativeWrapper.LrReader.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Lr.NativeWrapper.SpCardApp">
+      <HintPath>..\..\libs\Lr.NativeWrapper.SpCardApp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\libs\*.*">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>%(Filename)%(Extension)</TargetPath>
+    </Content>
+  </ItemGroup>
+</Project>
