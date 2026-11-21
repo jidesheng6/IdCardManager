@@ -18,6 +18,7 @@ namespace IdCardManager.UI.Composition
         public StoreValueService StoreValue { get; }
         public WithdrawValueService WithdrawValue { get; }
         public CardDataService CardData { get; }
+        public OilLimitService OilLimit { get; }
         public SettingsService SettingsService { get; }
         public ITransactionRepository Trades { get; }
 
@@ -40,6 +41,7 @@ namespace IdCardManager.UI.Composition
             StoreValue = new StoreValueService(Card, Monitor, Trades, settingsRepo);
             WithdrawValue = new WithdrawValueService(Card, Monitor, Trades, settingsRepo);
             CardData = new CardDataService(Card, Monitor);
+            OilLimit = new OilLimitService(Card, Monitor, settingsRepo);
             SettingsService = new SettingsService(settingsRepo, new LrCenterParamImporter());
 
             OilTypeCatalog.TryLoadFromSql(".", "DatCent_Single");

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using IdCardManager.Domain.Abstractions;
@@ -247,7 +248,8 @@ namespace IdCardManager.Infrastructure.Card
 
                         oil.ReadSensitiveFile(out var sens);
                         snap.OilTypeHex = ToHex(sens.UsedOilType);
-                        snap.OilTypeCode = OilTypeCatalog.Decode(sens.UsedOilType, out _);
+                        snap.OilTypeCode = OilTypeCatalog.Decode(sens.UsedOilType, out var oilCodes);
+                        snap.OilTypeCodes = oilCodes;
                         snap.AreaMode = sens.UsedAreaMode.ToString();
                         snap.AreaLimitHex = ToHex(sens.UsedArea);
                         snap.AreaLimit = BytesToAscii(sens.UsedArea);
@@ -416,6 +418,117 @@ namespace IdCardManager.Infrastructure.Card
 
                         // 原厂 API：授权卡 + 系统密钥重置用户卡 PIN（无法回读旧密码）
                         oil.ReloadPin(value, settings.UserKey, newPin.Trim());
+                        result.Success = true;
+                        return result;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result.Success = false;
+                    result.ErrorMessage = Truncate(ex.Message);
+                    return result;
+                }
+            }
+        }
+
+        public OilLimitResult ReadOilLimit(string pin)
+        {
+            var result = new OilLimitResult();
+            if (string.IsNullOrWhiteSpace(pin))
+            {
+                result.ErrorMessage = "请输入用户卡密码";
+                return result;
+            }
+
+            lock (_sync)
+            {
+                try
+                {
+                    EnsureOpen();
+                    using (var oil = new OilCard(_reader, _settings.UserCardNad))
+                    {
+                        oil.CheckCard(out var st);
+                        if (st == CardStatusConstants.CHECKCARD_STATUS_NOCARD ||
+                            st == CardStatusConstants.CHECKCARD_STATUS_WRONGCARD)
+                        {
+                            result.ErrorMessage = "请插入用户卡";
+                            return result;
+                        }
+
+                        var pinText = pin.Trim();
+                        oil.VerifyPin(pinText);
+                        oil.ReadPubAppFile(out var pub);
+                        result.CardSerialNo = BytesToAscii(pub.SerialNo);
+
+                        oil.ReadSensitiveFile(out var sens);
+                        result.OilLimitText = OilTypeCatalog.Decode(sens.UsedOilType, out var codes);
+                        result.OilLimitCodes = codes;
+                        result.Success = true;
+                        return result;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result.Success = false;
+                    result.ErrorMessage = Truncate(ex.Message);
+                    return result;
+                }
+            }
+        }
+
+        public OilLimitResult UpdateOilLimit(IEnumerable<string> codes, string pin, AppSettings settings)
+        {
+            var result = new OilLimitResult();
+            if (settings == null || string.IsNullOrWhiteSpace(settings.UserKey))
+            {
+                result.ErrorMessage = "请先导入系统密钥";
+                return result;
+            }
+
+            if (string.IsNullOrWhiteSpace(pin))
+            {
+                result.ErrorMessage = "请输入用户卡密码";
+                return result;
+            }
+
+            lock (_sync)
+            {
+                try
+                {
+                    EnsureOpen();
+                    using (var oil = new OilCard(_reader, settings.UserCardNad))
+                    using (var value = new ValueCard(_reader, settings.AuthCardNad))
+                    {
+                        value.CheckCard(out var authStatus);
+                        if (authStatus == CardStatusConstants.CHECKCARD_STATUS_NOCARD ||
+                            authStatus == CardStatusConstants.CHECKCARD_STATUS_WRONGCARD)
+                        {
+                            result.ErrorMessage = "请插入授权卡";
+                            return result;
+                        }
+
+                        oil.CheckCard(out var oilStatus);
+                        if (oilStatus == CardStatusConstants.CHECKCARD_STATUS_NOCARD ||
+                            oilStatus == CardStatusConstants.CHECKCARD_STATUS_WRONGCARD)
+                        {
+                            result.ErrorMessage = "请插入用户卡";
+                            return result;
+                        }
+
+                        var pinText = pin.Trim();
+                        oil.VerifyPin(pinText);
+
+                        oil.ReadSensitiveFile(out var sens);
+                        var length = sens.UsedOilType != null ? sens.UsedOilType.Length : 0;
+                        sens.UsedOilType = OilTypeCatalog.Encode(codes, length);
+                        oil.UpdateSensitiveFile(value, settings.UserKey, ref sens);
+
+                        oil.ReadSensitiveFile(out var updated);
+                        result.OilLimitText = OilTypeCatalog.Decode(updated.UsedOilType, out var updatedCodes);
+                        result.OilLimitCodes = updatedCodes;
+
+                        oil.ReadPubAppFile(out var pub);
+                        result.CardSerialNo = BytesToAscii(pub.SerialNo);
                         result.Success = true;
                         return result;
                     }

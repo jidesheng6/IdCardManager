@@ -28,6 +28,7 @@ namespace IdCardManager.Domain.Entities
 
         // 敏感信息文件 SP_SENSITIVITY_INFO_FILE
         public string OilTypeCode { get; set; }
+        public string OilTypeCodes { get; set; }
         public string OilTypeHex { get; set; }
         public string AreaMode { get; set; }
         public string AreaLimit { get; set; }

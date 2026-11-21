@@ -19,7 +19,7 @@ namespace IdCardManager.UI.Pages
             Store,
             Withdraw,
             CardData,
-            Trades,
+            OilLimit,
             ResetPin
         }
 
@@ -130,7 +130,7 @@ namespace IdCardManager.UI.Pages
                 Place(grid, 0, 0, HomeAction.Store, "充钱", "增加余额", Color.FromArgb(0, 150, 136), true),
                 Place(grid, 1, 0, HomeAction.Withdraw, "扣钱", "减少余额", Color.FromArgb(230, 126, 34), true),
                 Place(grid, 2, 0, HomeAction.CardData, "卡数据", "查看字段", Color.FromArgb(52, 120, 200), true),
-                Place(grid, 0, 1, HomeAction.Trades, "卡流水", "本地记录", Color.FromArgb(120, 90, 180), true),
+                Place(grid, 0, 1, HomeAction.OilLimit, "限加油品", "修改 / 流水", Color.FromArgb(120, 90, 180), true),
                 Place(grid, 1, 1, HomeAction.ResetPin, "重置密码", "需授权卡", Color.FromArgb(90, 90, 96), false)
             };
 

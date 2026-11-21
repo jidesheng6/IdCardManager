@@ -1,10 +1,22 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
-using System.Text;
+using System.Linq;
 
 namespace IdCardManager.Infrastructure.Card
 {
+    public sealed class OilTypeOption
+    {
+        public OilTypeOption(string code, string name)
+        {
+            Code = code;
+            Name = name;
+        }
+
+        public string Code { get; }
+        public string Name { get; }
+    }
+
     public static class OilTypeCatalog
     {
         private static readonly Dictionary<string, string> Map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -14,6 +26,11 @@ namespace IdCardManager.Infrastructure.Card
             { "1030", "93号汽油" },
             { "1050", "97号汽油" },
             { "1090", "98号汽油" }
+        };
+
+        private static readonly List<string> Order = new List<string>
+        {
+            "1020", "1040", "1030", "1050", "1090"
         };
 
         private static bool _loaded;
@@ -38,7 +55,12 @@ namespace IdCardManager.Infrastructure.Card
                                 var name = reader.IsDBNull(1) ? null : reader.GetString(1);
                                 if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
                                 {
-                                    Map[code.Trim()] = name.Trim();
+                                    var trimmedCode = code.Trim();
+                                    Map[trimmedCode] = name.Trim();
+                                    if (!Order.Contains(trimmedCode, StringComparer.OrdinalIgnoreCase))
+                                    {
+                                        Order.Add(trimmedCode);
+                                    }
                                 }
                             }
                         }
@@ -53,18 +75,50 @@ namespace IdCardManager.Infrastructure.Card
             }
         }
 
-        /// <summary>
-        /// 卡内 UsedOilType 字节按十六进制拼成油品编码（如 10 20 → 1020 → 92#汽油）
-        /// </summary>
-        public static string Decode(byte[] usedOilType, out string codes)
+        /// <summary>可选的油品列表（内置 + 原系统 OilInfo 表）。</summary>
+        public static IReadOnlyList<OilTypeOption> Options
         {
-            codes = string.Empty;
+            get
+            {
+                var list = new List<OilTypeOption>();
+                foreach (var code in Order)
+                {
+                    if (Map.TryGetValue(code, out var name))
+                    {
+                        list.Add(new OilTypeOption(code, NormalizeOilName(name)));
+                    }
+                }
+
+                foreach (var kv in Map)
+                {
+                    if (!Order.Contains(kv.Key, StringComparer.OrdinalIgnoreCase))
+                    {
+                        list.Add(new OilTypeOption(kv.Key, NormalizeOilName(kv.Value)));
+                    }
+                }
+
+                return list;
+            }
+        }
+
+        public static string GetName(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code)) return string.Empty;
+            var trimmed = code.Trim();
+            return Map.TryGetValue(trimmed, out var name) ? NormalizeOilName(name) : trimmed;
+        }
+
+        /// <summary>
+        /// 卡内 UsedOilType 字节按每 2 字节一个油品编码解析；返回空列表表示不限。
+        /// </summary>
+        public static List<string> DecodeCodes(byte[] usedOilType)
+        {
+            var result = new List<string>();
             if (usedOilType == null || usedOilType.Length == 0)
             {
-                return "不限";
+                return result;
             }
 
-            // 全 FF 表示不限制
             var allFf = true;
             foreach (var b in usedOilType)
             {
@@ -77,41 +131,97 @@ namespace IdCardManager.Infrastructure.Card
 
             if (allFf)
             {
-                return "不限";
+                return result;
             }
 
-            var hex = new StringBuilder();
+            var bytes = new List<byte>();
             foreach (var b in usedOilType)
             {
-                if (b == 0x00 || b == 0xFF) continue;
-                hex.Append(b.ToString("X2"));
+                if (b != 0x00 && b != 0xFF) bytes.Add(b);
             }
 
-            var raw = hex.ToString();
-            if (string.IsNullOrEmpty(raw))
+            for (var i = 0; i + 1 < bytes.Count; i += 2)
+            {
+                result.Add(bytes[i].ToString("X2") + bytes[i + 1].ToString("X2"));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 按选中的油品编码生成 UsedOilType 字节；空集合表示不限（全部 0xFF）。
+        /// length 通常沿用卡里读出来的数组长度。
+        /// </summary>
+        public static byte[] Encode(IEnumerable<string> codes, int length)
+        {
+            var selected = new List<string>();
+            if (codes != null)
+            {
+                foreach (var code in codes)
+                {
+                    if (string.IsNullOrWhiteSpace(code)) continue;
+                    var trimmed = code.Trim();
+                    if (!selected.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+                    {
+                        selected.Add(trimmed);
+                    }
+                }
+            }
+
+            var need = selected.Count * 2;
+            if (length < need) length = need;
+            if (length <= 0) length = 8;
+
+            var buffer = new byte[length];
+            for (var i = 0; i < buffer.Length; i++)
+            {
+                buffer[i] = 0xFF;
+            }
+
+            var offset = 0;
+            foreach (var code in selected)
+            {
+                if (code.Length != 4 || !IsHex(code)) continue;
+                buffer[offset] = Convert.ToByte(code.Substring(0, 2), 16);
+                buffer[offset + 1] = Convert.ToByte(code.Substring(2, 2), 16);
+                offset += 2;
+            }
+
+            return buffer;
+        }
+
+        /// <summary>
+        /// 卡内 UsedOilType 字节按十六进制拼成油品编码（如 10 20 → 1020 → 92#汽油）
+        /// </summary>
+        public static string Decode(byte[] usedOilType, out string codes)
+        {
+            var codeList = DecodeCodes(usedOilType);
+            codes = string.Join(",", codeList);
+            if (codeList.Count == 0)
             {
                 return "不限";
             }
 
-            // 按 4 位一组解析多个油品码
             var names = new List<string>();
-            var codeList = new List<string>();
-            for (var i = 0; i + 3 < raw.Length; i += 4)
+            foreach (var code in codeList)
             {
-                var code = raw.Substring(i, 4);
-                codeList.Add(code);
-                names.Add(NormalizeOilName(Map.TryGetValue(code, out var name) ? name : code));
+                names.Add(GetName(code));
             }
 
-            if (codeList.Count == 0 && raw.Length >= 4)
+            return string.Join("/", names);
+        }
+
+        private static bool IsHex(string text)
+        {
+            foreach (var ch in text)
             {
-                var code = raw.Substring(0, 4);
-                codeList.Add(code);
-                names.Add(NormalizeOilName(Map.TryGetValue(code, out var name) ? name : code));
+                var ok = (ch >= '0' && ch <= '9') ||
+                         (ch >= 'A' && ch <= 'F') ||
+                         (ch >= 'a' && ch <= 'f');
+                if (!ok) return false;
             }
 
-            codes = string.Join(",", codeList);
-            return names.Count == 0 ? raw : string.Join("/", names);
+            return true;
         }
 
         private static string NormalizeOilName(string name)

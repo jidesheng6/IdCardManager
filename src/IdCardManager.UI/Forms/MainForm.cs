@@ -25,7 +25,7 @@ namespace IdCardManager.UI.Forms
         private readonly StoreValuePage _storePage;
         private readonly WithdrawValuePage _withdrawPage;
         private readonly CardDataPage _cardDataPage;
-        private readonly TradeListPage _tradePage;
+        private readonly OilLimitPage _oilLimitPage;
         private bool _closing;
 
         public MainForm(AppComposition app)
@@ -53,9 +53,9 @@ namespace IdCardManager.UI.Forms
             _storePage = Prepare(new StoreValuePage(app));
             _withdrawPage = Prepare(new WithdrawValuePage(app));
             _cardDataPage = Prepare(new CardDataPage(app));
-            _tradePage = Prepare(new TradeListPage(app));
+            _oilLimitPage = Prepare(new OilLimitPage(app));
             // SunnyUI 会把 UIPanel.Text 画到内容区，统一清空避免飘字
-            ClearPageCaption(_homePage, _storePage, _withdrawPage, _cardDataPage, _tradePage);
+            ClearPageCaption(_homePage, _storePage, _withdrawPage, _cardDataPage, _oilLimitPage);
 
             _homePage.Navigate += OnHomeNavigate;
             _back.Click += (_, __) =>
@@ -205,9 +205,9 @@ namespace IdCardManager.UI.Forms
                 case HomePage.HomeAction.CardData:
                     ShowPage(_cardDataPage, "卡数据");
                     break;
-                case HomePage.HomeAction.Trades:
-                    _tradePage.Reload();
-                    ShowPage(_tradePage, "卡流水");
+                case HomePage.HomeAction.OilLimit:
+                    _oilLimitPage.Reload();
+                    ShowPage(_oilLimitPage, "限加油品");
                     break;
             }
         }
@@ -252,6 +252,7 @@ namespace IdCardManager.UI.Forms
             _storePage.ApplyDeviceState(connected, status);
             _withdrawPage.ApplyDeviceState(connected, status);
             _cardDataPage.ApplyDeviceState(connected, status);
+            _oilLimitPage.ApplyDeviceState(connected, status);
         }
 
         private async void OnFormClosing(object sender, FormClosingEventArgs e)

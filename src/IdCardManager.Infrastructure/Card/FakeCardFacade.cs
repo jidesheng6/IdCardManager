@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using IdCardManager.Domain.Abstractions;
 using IdCardManager.Domain.Entities;
 using IdCardManager.Domain.Enums;
@@ -9,6 +11,7 @@ namespace IdCardManager.Infrastructure.Card
         private bool _open = true;
         private uint _balance = 100000; // 1000.00 元
         private string _pin = "123456";
+        private readonly List<string> _oilCodes = new List<string> { "1020" };
 
         public bool Open()
         {
@@ -49,8 +52,9 @@ namespace IdCardManager.Infrastructure.Card
                 ExpirationDate = "2030-12-31",
                 HolderName = "测试用户",
                 CertificateNo = "000000",
-                OilTypeCode = "1020",
-                OilTypeHex = "1020",
+                OilTypeCode = OilTypeCatalog.Decode(OilTypeCatalog.Encode(_oilCodes, 8), out var fakeOilCodes),
+                OilTypeCodes = fakeOilCodes,
+                OilTypeHex = OilTypeCatalog.Encode(_oilCodes, 8).Select(b => b.ToString("X2")).Aggregate(string.Empty, (a, b) => a + b),
                 DetectedCardType = "OilCard",
                 CardStep = "Saled",
                 IsGreyCard = "否",
@@ -75,8 +79,52 @@ namespace IdCardManager.Infrastructure.Card
                 Success = true,
                 CardSerialNo = "FAKE0001",
                 BalanceFen = _balance,
-                OilLimitText = "92号汽油",
-                OilLimitCodes = "1020"
+                OilLimitText = OilTypeCatalog.Decode(OilTypeCatalog.Encode(_oilCodes, 8), out var codes),
+                OilLimitCodes = codes
+            };
+        }
+
+        public OilLimitResult ReadOilLimit(string pin)
+        {
+            if (pin != _pin)
+            {
+                return new OilLimitResult { Success = false, ErrorMessage = "密码错误" };
+            }
+
+            return new OilLimitResult
+            {
+                Success = true,
+                CardSerialNo = "FAKE0001",
+                OilLimitText = OilTypeCatalog.Decode(OilTypeCatalog.Encode(_oilCodes, 8), out var codes),
+                OilLimitCodes = codes
+            };
+        }
+
+        public OilLimitResult UpdateOilLimit(IEnumerable<string> codes, string pin, AppSettings settings)
+        {
+            if (pin != _pin)
+            {
+                return new OilLimitResult { Success = false, ErrorMessage = "密码错误" };
+            }
+
+            _oilCodes.Clear();
+            if (codes != null)
+            {
+                foreach (var code in codes)
+                {
+                    if (!string.IsNullOrWhiteSpace(code))
+                    {
+                        _oilCodes.Add(code.Trim());
+                    }
+                }
+            }
+
+            return new OilLimitResult
+            {
+                Success = true,
+                CardSerialNo = "FAKE0001",
+                OilLimitText = OilTypeCatalog.Decode(OilTypeCatalog.Encode(_oilCodes, 8), out var updatedCodes),
+                OilLimitCodes = updatedCodes
             };
         }
 

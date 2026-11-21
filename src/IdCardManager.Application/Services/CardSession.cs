@@ -45,6 +45,18 @@ namespace IdCardManager.Application.Services
             Changed?.Invoke();
         }
 
+        public void UpdateOilLimit(string oilLimitText, string oilLimitCodes)
+        {
+            lock (_sync)
+            {
+                if (!IsUnlocked) return;
+                OilLimitText = oilLimitText ?? string.Empty;
+                OilLimitCodes = oilLimitCodes ?? string.Empty;
+            }
+
+            Changed?.Invoke();
+        }
+
         public void SyncDevice(CardSlotStatus status)
         {
             var clear = false;
