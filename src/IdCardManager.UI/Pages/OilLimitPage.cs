@@ -134,11 +134,12 @@ namespace IdCardManager.UI.Pages
             _unlimited = CreateOptionBox("不限", null);
             _options.Controls.Add(_unlimited);
 
-            foreach (var option in OilTypeCatalog.Options)
+            // 仅保留 92 号、95 号两个可选油品，单选
+            foreach (var code in new[] { "1020", "1040" })
             {
-                var box = CreateOptionBox(option.Name, option.Code);
+                var box = CreateOptionBox(OilTypeCatalog.GetName(code), code);
                 _options.Controls.Add(box);
-                _boxes[option.Code] = box;
+                _boxes[code] = box;
             }
 
             layout.Controls.Add(_options, 0, 1);
@@ -295,6 +296,7 @@ namespace IdCardManager.UI.Pages
             _suppress = true;
             try
             {
+                // 单选：点亮当前，其余全部熄灭
                 if (ReferenceEquals(box, _unlimited))
                 {
                     if (_unlimited.Checked)
@@ -305,6 +307,10 @@ namespace IdCardManager.UI.Pages
                 else if (box.Checked)
                 {
                     _unlimited.Checked = false;
+                    foreach (var b in _boxes.Values)
+                    {
+                        if (!ReferenceEquals(b, box)) b.Checked = false;
+                    }
                 }
             }
             finally
@@ -318,13 +324,17 @@ namespace IdCardManager.UI.Pages
         private void UpdateOptionStyles()
         {
             var unlimited = _unlimited.Checked;
+            var anySpecific = _boxes.Values.Any(b => b.Checked);
+
             foreach (var box in _boxes.Values)
             {
+                // 选中“不限”后，其余油品不可点
                 box.Enabled = _canEdit && !unlimited;
                 ApplyOptionStyle(box);
             }
 
-            _unlimited.Enabled = _canEdit;
+            // 选中任意具体油品后，“不限”不可点
+            _unlimited.Enabled = _canEdit && !anySpecific;
             ApplyOptionStyle(_unlimited);
         }
 
@@ -362,20 +372,19 @@ namespace IdCardManager.UI.Pages
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
+            // 单选：优先“不限”，否则取第一个具体油品码
             var unlimited = !string.IsNullOrWhiteSpace(text) &&
                             (list.Count == 0 || string.Equals(text, "不限", StringComparison.Ordinal));
+            var specificCode = unlimited ? null : (list.Count > 0 ? list[0] : null);
 
             _suppress = true;
             try
             {
                 _unlimited.Checked = unlimited;
                 foreach (var box in _boxes.Values) box.Checked = false;
-                if (!unlimited)
+                if (specificCode != null)
                 {
-                    foreach (var code in list)
-                    {
-                        GetOrCreateOption(code).Checked = true;
-                    }
+                    GetOrCreateOption(specificCode).Checked = true;
                 }
             }
             finally
